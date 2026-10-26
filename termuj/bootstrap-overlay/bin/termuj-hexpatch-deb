@@ -74,9 +74,12 @@ patch_deb() {
 		fi
 	done
 
-	# Regenerate md5sums of patched files
+	# Recompute the hashes of the files listed in md5sums, keeping the list unchanged
 	if [ -f "$ctrl/md5sums" ]; then
-		(cd "$data" && find . -type f -print0 | sed -z 's|^\./||' | sort -z | xargs -0 -r md5sum) > "$tmp/md5sums"
+		if ! (cd "$data" && sed 's/^[0-9a-f]*  //' "$ctrl/md5sums" | xargs -r -d '\n' md5sum) > "$tmp/md5sums"; then
+			echo "termuj-hexpatch: failed to recompute md5sums of $(basename "$deb"), aborting" >&2
+			exit 1
+		fi
 		mv "$tmp/md5sums" "$ctrl/md5sums"
 	fi
 
