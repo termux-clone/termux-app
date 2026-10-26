@@ -16,32 +16,54 @@ NEW="com.termuj"
 PREFIX="/data/data/$NEW/files/usr"
 export LC_ALL=C
 
+# Create an ar archive like "ar cr" does, as binutils is not part of the bootstrap.
+ar_create() {
+	out="$1"
+	shift
+	printf '!<arch>\n' > "$out"
+	for f in "$@"; do
+		size="$(stat -c %s "$f")"
+		printf '%-16s%-12s%-6s%-6s%-8s%-10s`\n' "$(basename "$f")" 0 0 0 100644 "$size" >> "$out"
+		cat "$f" >> "$out"
+		[ $((size % 2)) -eq 0 ] || printf '\n' >> "$out"
+	done
+}
+
+# Pack a directory like termux-packages does (termux_step_create_debian_package).
+tar_create() {
+	(cd "$1" && tar --sort=name --owner=0 --group=0 --numeric-owner -H gnu -cf - .) | gzip -1 > "$2"
+}
+
 patch_deb() {
 	deb="$1"
 	tmp="$(mktemp -d "$PREFIX/tmp/termuj-hexpatch.XXXXXX")"
-	root="$tmp/root"
+	ctrl="$tmp/control"
+	data="$tmp/data"
+	mkdir "$ctrl" "$data"
 
-	dpkg-deb -R "$deb" "$root"
+	dpkg-deb --ctrl-tarfile "$deb" | tar -xpf - -C "$ctrl"
+	dpkg-deb --fsys-tarfile "$deb" | tar -xpf - -C "$data"
 
-	if ! grep -rqaF "$OLD" "$root" && [ -z "$(find "$root" -name "*$OLD*" -print -quit)" ] && \
-		[ -z "$(find "$root" -type l -lname "*$OLD*" -print -quit)" ]; then
+	if ! grep -rqaF "$OLD" "$ctrl" "$data" && [ -z "$(find "$data" -name "*$OLD*" -print -quit)" ] && \
+		[ -z "$(find "$data" -type l -lname "*$OLD*" -print -quit)" ]; then
 		rm -rf "$tmp"
+		tmp=""
 		return 0
 	fi
 
 	echo "termuj-hexpatch: patching $(basename "$deb")"
 
 	# File contents
-	find "$root" -type f -print0 | xargs -0 -r grep -lZaF "$OLD" | xargs -0 -r sed -i "s/$OLD_RE/$NEW/g"
+	find "$ctrl" "$data" -type f -print0 | xargs -0 -r grep -lZaF "$OLD" | xargs -0 -r sed -i "s/$OLD_RE/$NEW/g"
 
 	# Symlink targets
-	find "$root" -type l -lname "*$OLD*" | while IFS= read -r link; do
+	find "$data" -type l -lname "*$OLD*" | while IFS= read -r link; do
 		target="$(readlink "$link" | sed "s/$OLD_RE/$NEW/g")"
 		ln -sfn "$target" "$link"
 	done
 
 	# File and directory names (deepest first)
-	find "$root" -depth -name "*$OLD*" | while IFS= read -r path; do
+	find "$data" -depth -name "*$OLD*" | while IFS= read -r path; do
 		dir="$(dirname "$path")"
 		name="$(basename "$path" | sed "s/$OLD_RE/$NEW/g")"
 		if [ -e "$dir/$name" ] && [ -d "$path" ]; then
@@ -53,18 +75,15 @@ patch_deb() {
 	done
 
 	# Regenerate md5sums of patched files
-	if [ -f "$root/DEBIAN/md5sums" ]; then
-		(cd "$root" && find . -path ./DEBIAN -prune -o -type f -print0 | sed -z 's|^\./||' | sort -z | \
-			xargs -0 -r md5sum) > "$tmp/md5sums"
-		mv "$tmp/md5sums" "$root/DEBIAN/md5sums"
+	if [ -f "$ctrl/md5sums" ]; then
+		(cd "$data" && find . -type f -print0 | sed -z 's|^\./||' | sort -z | xargs -0 -r md5sum) > "$tmp/md5sums"
+		mv "$tmp/md5sums" "$ctrl/md5sums"
 	fi
 
-	# Termux debs are not built with dpkg-deb and may have non-executable maintainer scripts
-	for script in preinst postinst prerm postrm config; do
-		[ -f "$root/DEBIAN/$script" ] && chmod 0755 "$root/DEBIAN/$script"
-	done
-
-	dpkg-deb --root-owner-group -Zgzip -z1 -b "$root" "$tmp/patched.deb" > /dev/null
+	printf '2.0\n' > "$tmp/debian-binary"
+	tar_create "$ctrl" "$tmp/control.tar.gz"
+	tar_create "$data" "$tmp/data.tar.gz"
+	ar_create "$tmp/patched.deb" "$tmp/debian-binary" "$tmp/control.tar.gz" "$tmp/data.tar.gz"
 	mv "$tmp/patched.deb" "$deb"
 	rm -rf "$tmp"
 	tmp=""
