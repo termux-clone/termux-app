@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.termux"
+        applicationId "com.termuj"
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
         versionCode 1002
@@ -36,7 +36,7 @@ android {
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
 
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux"
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termuj"
         manifestPlaceholders.TERMUX_APP_NAME = "Termux"
         manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
         manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"
@@ -114,10 +114,10 @@ android {
         variant.outputs.all { output ->
             if (variant.buildType.name == "debug") {
                 def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("termux-app_" + (apkVersionTag ? apkVersionTag : "debug") + "_" + (abi ? abi : "universal") + ".apk")
+                outputFileName = new File("termuj-app_" + (apkVersionTag ? apkVersionTag : "debug") + "_" + (abi ? abi : "universal") + ".apk")
             } else if (variant.buildType.name == "release") {
                 def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("termux-app_" + (apkVersionTag ? apkVersionTag : "release") + "_" + (abi ? abi : "universal") + ".apk")
+                outputFileName = new File("termuj-app_" + (apkVersionTag ? apkVersionTag : "release") + "_" + (abi ? abi : "universal") + ".apk")
             }
         }
     }
@@ -145,7 +145,9 @@ def validateVersionName(String versionName) {
 def downloadBootstrap(String arch, String expectedChecksum, String version) {
     def digest = java.security.MessageDigest.getInstance("SHA-256")
 
-    def localUrl = "src/main/cpp/bootstrap-" + arch + ".zip"
+    // The official bootstrap is downloaded to the build directory and then hexpatched from
+    // "com.termux" to "com.termuj" into src/main/cpp by hexpatchBootstrap().
+    def localUrl = "build/bootstrap-original/bootstrap-" + arch + ".zip"
     def file = new File(projectDir, localUrl)
     if (file.exists()) {
         def buffer = new byte[8192]
@@ -158,6 +160,7 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
         def checksum = new BigInteger(1, digest.digest()).toString(16)
         while (checksum.length() < 64) { checksum = "0" + checksum }
         if (checksum == expectedChecksum) {
+            hexpatchBootstrap(arch, file)
             return
         } else {
             logger.quiet("Deleting old local file with wrong hash: " + localUrl)
@@ -182,6 +185,24 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     if (checksum != expectedChecksum) {
         file.delete()
         throw new GradleException("Wrong checksum for " + remoteUrl + ": expected: " + expectedChecksum + ", actual: " + checksum)
+    }
+
+    hexpatchBootstrap(arch, file)
+}
+
+def hexpatchBootstrap(String arch, File originalFile) {
+    def script = new File(rootDir, "termuj/hexpatch-bootstrap.py")
+    def overlayDir = new File(rootDir, "termuj/bootstrap-overlay")
+    def patchedFile = new File(projectDir, "src/main/cpp/bootstrap-" + arch + ".zip")
+
+    def inputsLastModified = [originalFile.lastModified(), script.lastModified()]
+    overlayDir.eachFileRecurse { inputsLastModified << it.lastModified() }
+    if (patchedFile.exists() && patchedFile.lastModified() > inputsLastModified.max()) return
+
+    logger.quiet("Hexpatching " + originalFile + " to " + patchedFile + " ...")
+    patchedFile.parentFile.mkdirs()
+    exec {
+        commandLine "python3", script.absolutePath, originalFile.absolutePath, patchedFile.absolutePath, overlayDir.absolutePath
     }
 }
 

@@ -1,0 +1,2 @@
+// Hexpatch "com.termux" packages to "com.termuj" before dpkg unpacks them.
+DPkg::Pre-Install-Pkgs {"/data/data/com.termuj/files/usr/bin/termuj-hexpatch-deb --apt";};

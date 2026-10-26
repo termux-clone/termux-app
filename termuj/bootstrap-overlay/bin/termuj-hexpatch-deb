@@ -1,0 +1,86 @@
+#!/data/data/com.termuj/files/usr/bin/sh
+# Hexpatch Termux .deb packages built for "com.termux" so that they can be
+# installed by the "com.termuj" app. As both package names have the same
+# length, every occurrence is replaced in-place (binaries included).
+# See https://github.com/termux/termux-app/issues/2734#issuecomment-1747413134
+#
+# Called by apt via "DPkg::Pre-Install-Pkgs" (deb paths on stdin) before dpkg
+# unpacks the packages, or manually: termuj-hexpatch-deb <file.deb>...
+
+set -e
+
+# Split so that this script itself is never matched by a hexpatch.
+OLD="com.termu""x"
+OLD_RE="com\\.termu""x"
+NEW="com.termuj"
+PREFIX="/data/data/$NEW/files/usr"
+export LC_ALL=C
+
+patch_deb() {
+	deb="$1"
+	tmp="$(mktemp -d "$PREFIX/tmp/termuj-hexpatch.XXXXXX")"
+	root="$tmp/root"
+
+	dpkg-deb -R "$deb" "$root"
+
+	if ! grep -rqaF "$OLD" "$root" && [ -z "$(find "$root" -name "*$OLD*" -print -quit)" ] && \
+		[ -z "$(find "$root" -type l -lname "*$OLD*" -print -quit)" ]; then
+		rm -rf "$tmp"
+		return 0
+	fi
+
+	echo "termuj-hexpatch: patching $(basename "$deb")"
+
+	# File contents
+	find "$root" -type f -print0 | xargs -0 -r grep -lZaF "$OLD" | xargs -0 -r sed -i "s/$OLD_RE/$NEW/g"
+
+	# Symlink targets
+	find "$root" -type l -lname "*$OLD*" | while IFS= read -r link; do
+		target="$(readlink "$link" | sed "s/$OLD_RE/$NEW/g")"
+		ln -sfn "$target" "$link"
+	done
+
+	# File and directory names (deepest first)
+	find "$root" -depth -name "*$OLD*" | while IFS= read -r path; do
+		dir="$(dirname "$path")"
+		name="$(basename "$path" | sed "s/$OLD_RE/$NEW/g")"
+		if [ -e "$dir/$name" ] && [ -d "$path" ]; then
+			cp -a "$path/." "$dir/$name/"
+			rm -rf "$path"
+		else
+			mv "$path" "$dir/$name"
+		fi
+	done
+
+	# Regenerate md5sums of patched files
+	if [ -f "$root/DEBIAN/md5sums" ]; then
+		(cd "$root" && find . -path ./DEBIAN -prune -o -type f -print0 | sed -z 's|^\./||' | sort -z | \
+			xargs -0 -r md5sum) > "$tmp/md5sums"
+		mv "$tmp/md5sums" "$root/DEBIAN/md5sums"
+	fi
+
+	# Termux debs are not built with dpkg-deb and may have non-executable maintainer scripts
+	for script in preinst postinst prerm postrm config; do
+		[ -f "$root/DEBIAN/$script" ] && chmod 0755 "$root/DEBIAN/$script"
+	done
+
+	dpkg-deb --root-owner-group -Zgzip -z1 -b "$root" "$tmp/patched.deb" > /dev/null
+	mv "$tmp/patched.deb" "$deb"
+	rm -rf "$tmp"
+	tmp=""
+}
+
+tmp=""
+trap '[ -n "$tmp" ] && rm -rf "$tmp"' EXIT
+
+if [ "$1" = "--apt" ]; then
+	while IFS= read -r line; do
+		case "$line" in
+			*.deb) [ -f "$line" ] && patch_deb "$line" ;;
+		esac
+	done
+else
+	for deb in "$@"; do
+		patch_deb "$deb"
+	done
+fi
