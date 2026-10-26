@@ -215,17 +215,17 @@ final class TermuxInstaller {
                     // Run Termux bootstrap second stage.
                     String termuxBootstrapSecondStageFile = TERMUX_PREFIX_DIR_PATH + "/etc/termux/bootstrap/termux-bootstrap-second-stage.sh";
                     if (!FileUtils.fileExists(termuxBootstrapSecondStageFile, false)) {
-                        Logger.logInfo(LOG_TAG, "Not running Termux bootstrap second stage since script not found at \"" + termuxBootstrapSecondStageFile + "\" path.");
+                        Logger.logInfo(LOG_TAG, "Not running Termuj bootstrap second stage since script not found at \"" + termuxBootstrapSecondStageFile + "\" path.");
                     } else {
                         if (!FileUtils.fileExists(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/bash", true)) {
-                            Logger.logInfo(LOG_TAG, "Not running Termux bootstrap second stage since bash not found.");
+                            Logger.logInfo(LOG_TAG, "Not running Termuj bootstrap second stage since bash not found.");
                         }
-                        Logger.logInfo(LOG_TAG, "Running Termux bootstrap second stage.");
+                        Logger.logInfo(LOG_TAG, "Running Termuj bootstrap second stage.");
 
                         ExecutionCommand executionCommand = new ExecutionCommand(-1,
                             termuxBootstrapSecondStageFile, null, null,
                             null, true, false);
-                        executionCommand.commandLabel = "Termux Bootstrap Second Stage Command";
+                        executionCommand.commandLabel = "Termuj Bootstrap Second Stage Command";
                         executionCommand.backgroundCustomLogLevel = Logger.LOG_LEVEL_NORMAL;
                         TermuxTask termuxTask = TermuxTask.execute(activity, executionCommand, null, new TermuxShellEnvironmentClient(), true);
                         if (termuxTask == null || !executionCommand.isSuccessful() || executionCommand.resultData.exitCode != 0) {

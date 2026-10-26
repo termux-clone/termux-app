@@ -3,12 +3,12 @@
 <!DOCTYPE resources [
     <!ENTITY TERMUX_PACKAGE_NAME "com.termuj">
     <!ENTITY TERMUX_APP_NAME "Termuj">
-    <!ENTITY TERMUX_API_APP_NAME "Termux:API">
-    <!ENTITY TERMUX_BOOT_APP_NAME "Termux:Boot">
-    <!ENTITY TERMUX_FLOAT_APP_NAME "Termux:Float">
-    <!ENTITY TERMUX_STYLING_APP_NAME "Termux:Styling">
-    <!ENTITY TERMUX_TASKER_APP_NAME "Termux:Tasker">
-    <!ENTITY TERMUX_WIDGET_APP_NAME "Termux:Widget">
+    <!ENTITY TERMUX_API_APP_NAME "Termuj:API">
+    <!ENTITY TERMUX_BOOT_APP_NAME "Termuj:Boot">
+    <!ENTITY TERMUX_FLOAT_APP_NAME "Termuj:Float">
+    <!ENTITY TERMUX_STYLING_APP_NAME "Termuj:Styling">
+    <!ENTITY TERMUX_TASKER_APP_NAME "Termuj:Tasker">
+    <!ENTITY TERMUX_WIDGET_APP_NAME "Termuj:Widget">
     ]>
 
 <resources>

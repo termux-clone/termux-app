@@ -603,7 +603,7 @@ public abstract class TermuxSharedProperties {
         Properties properties = getProperties(true);
         StringBuilder propertiesDump = new StringBuilder();
 
-        propertiesDump.append(mLabel).append(" Termux Properties:");
+        propertiesDump.append(mLabel).append(" Termuj Properties:");
         if (properties != null) {
             for (String key : properties.stringPropertyNames()) {
                 propertiesDump.append("\n").append(key).append(": `").append(properties.get(key)).append("`");
