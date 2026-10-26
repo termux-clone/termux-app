@@ -8,7 +8,7 @@ Since "com.termux" and "com.termuj" have the same length, every occurrence of
 the old package name in every file (binaries included) is replaced in-place
 without changing any offsets. dpkg md5sums of patched files are recomputed and
 the files of the overlay directory (the apt hook that hexpatches every .deb
-installed later) are added to the zip unpatched.
+installed later) are added to the zip unpatched, with their file modes.
 
 Usage: hexpatch-bootstrap.py <input.zip> <output.zip> <overlay-dir>
 """
@@ -69,7 +69,7 @@ def main():
             full = os.path.join(root, n)
             rel = os.path.relpath(full, overlay_dir).replace(os.sep, "/")
             with open(full, "rb") as f:
-                overlay[rel] = f.read()
+                overlay[rel] = (f.read(), os.stat(full).st_mode)
 
     tmp_path = out_path + ".tmp"
     with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -84,9 +84,10 @@ def main():
             zout.writestr(new_info, data)
         for rel in sorted(overlay):
             new_info = zipfile.ZipInfo(rel, date_time=(2020, 1, 1, 0, 0, 0))
-            new_info.external_attr = 0o100700 << 16
+            data, mode = overlay[rel]
+            new_info.external_attr = mode << 16
             new_info.compress_type = zipfile.ZIP_DEFLATED
-            zout.writestr(new_info, overlay[rel])
+            zout.writestr(new_info, data)
     os.replace(tmp_path, out_path)
 
     print("Hexpatched %d of %d entries, added %d overlay files: %s" %
