@@ -108,9 +108,9 @@ public class TermuxUtils {
      * Check if Termux app is installed and enabled. This can be used by external apps that don't
      * share `sharedUserId` with the Termux app.
      *
-     * If your third-party app is targeting sdk `30` (android `11`), then it needs to add `com.termux`
+     * If your third-party app is targeting sdk `30` (android `11`), then it needs to add `com.termuj`
      * package to the `queries` element or request `QUERY_ALL_PACKAGES` permission in its
-     * `AndroidManifest.xml`. Otherwise it will get `PackageSetting{...... com.termux/......} BLOCKED`
+     * `AndroidManifest.xml`. Otherwise it will get `PackageSetting{...... com.termuj/......} BLOCKED`
      * errors in `logcat` and `RUN_COMMAND` won't work.
      * Check [package-visibility](https://developer.android.com/training/basics/intents/package-visibility#package-name),
      * `QUERY_ALL_PACKAGES` [googleplay policy](https://support.google.com/googleplay/android-developer/answer/10158779
@@ -119,7 +119,7 @@ public class TermuxUtils {
      * {@code
      * <manifest
      *     <queries>
-     *         <package android:name="com.termux" />
+     *         <package android:name="com.termuj" />
      *    </queries>
      * </manifest>
      * }

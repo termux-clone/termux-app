@@ -13,7 +13,7 @@ package com.termuj.shared.settings.preferences;
  *
  * - 0.3.0 (2021-03-16)
  *      - Changed to per app scoping of variables so that the same file can store all constants of
- *          Termux app and its plugins. This will allow {@link com.termux.app.TermuxSettings} to
+ *          Termux app and its plugins. This will allow {@link com.termuj.app.TermuxSettings} to
  *          manage preferences of plugins as well if they don't have launcher activity themselves
  *          and also allow plugin apps to make changes to preferences from background.
  *      - Added following to `TERMUX_TASKER_APP`:

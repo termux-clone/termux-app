@@ -1,8 +1,8 @@
 package com.termuj.shared.terminal;
 
 import com.termuj.shared.logger.Logger;
-import com.termux.terminal.TerminalSession;
-import com.termux.terminal.TerminalSessionClient;
+import com.termuj.terminal.TerminalSession;
+import com.termuj.terminal.TerminalSessionClient;
 
 public class TermuxTerminalSessionClientBase implements TerminalSessionClient {
 

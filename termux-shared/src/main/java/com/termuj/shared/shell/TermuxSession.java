@@ -10,8 +10,8 @@ import com.termuj.shared.models.ExecutionCommand;
 import com.termuj.shared.models.ResultData;
 import com.termuj.shared.models.errors.Errno;
 import com.termuj.shared.logger.Logger;
-import com.termux.terminal.TerminalSession;
-import com.termux.terminal.TerminalSessionClient;
+import com.termuj.terminal.TerminalSession;
+import com.termuj.terminal.TerminalSessionClient;
 
 import java.io.File;
 

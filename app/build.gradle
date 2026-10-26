@@ -37,7 +37,7 @@ android {
         validateVersionName(versionName)
 
         manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termuj"
-        manifestPlaceholders.TERMUX_APP_NAME = "Termux"
+        manifestPlaceholders.TERMUX_APP_NAME = "Termuj"
         manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
         manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"
         manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "Termux:Float"
@@ -146,7 +146,7 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     def digest = java.security.MessageDigest.getInstance("SHA-256")
 
     // The official bootstrap is downloaded to the build directory and then hexpatched from
-    // "com.termux" to "com.termuj" into src/main/cpp by hexpatchBootstrap().
+    // "com.termuj" to "com.termuj" into src/main/cpp by hexpatchBootstrap().
     def localUrl = "build/bootstrap-original/bootstrap-" + arch + ".zip"
     def file = new File(projectDir, localUrl)
     if (file.exists()) {

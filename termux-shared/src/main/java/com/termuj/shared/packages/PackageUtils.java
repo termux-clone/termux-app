@@ -243,7 +243,7 @@ public class PackageUtils {
             * Need a device that allows (manual) installation of apk with mismatched signature of
             * sharedUserId apps to test. Currently, if its done, PackageManager just doesn't load
             * the package and removes its apk automatically if its installed as a user app instead of system app
-            * W/PackageManager: Failed to parse /path/to/com.termux.tasker.apk: Signature mismatch for shared user: SharedUserSetting{xxxxxxx com.termux/10xxx}
+            * W/PackageManager: Failed to parse /path/to/com.termuj.tasker.apk: Signature mismatch for shared user: SharedUserSetting{xxxxxxx com.termuj/10xxx}
             */
             PackageInfo packageInfo = getPackageInfoForPackage(context, PackageManager.GET_SIGNATURES);
             if (packageInfo == null) return null;

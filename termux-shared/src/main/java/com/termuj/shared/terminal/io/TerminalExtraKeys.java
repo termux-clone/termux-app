@@ -9,7 +9,7 @@ import androidx.annotation.NonNull;
 import com.termuj.shared.terminal.io.extrakeys.ExtraKeyButton;
 import com.termuj.shared.terminal.io.extrakeys.ExtraKeysView;
 import com.termuj.shared.terminal.io.extrakeys.SpecialButton;
-import com.termux.view.TerminalView;
+import com.termuj.view.TerminalView;
 
 import static com.termuj.shared.terminal.io.extrakeys.ExtraKeysConstants.PRIMARY_KEY_CODES_FOR_STRINGS;
 

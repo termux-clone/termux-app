@@ -10,7 +10,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.termuj.app.terminal.TermuxTerminalSessionClient;
 import com.termuj.app.terminal.TermuxTerminalViewClient;
 import com.termuj.shared.terminal.io.TerminalExtraKeys;
-import com.termux.view.TerminalView;
+import com.termuj.view.TerminalView;
 
 public class TermuxTerminalExtraKeys extends TerminalExtraKeys {
 

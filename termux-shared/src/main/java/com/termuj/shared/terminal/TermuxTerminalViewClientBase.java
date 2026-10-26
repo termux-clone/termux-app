@@ -4,8 +4,8 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 
 import com.termuj.shared.logger.Logger;
-import com.termux.terminal.TerminalSession;
-import com.termux.view.TerminalViewClient;
+import com.termuj.terminal.TerminalSession;
+import com.termuj.view.TerminalViewClient;
 
 public class TermuxTerminalViewClientBase implements TerminalViewClient {
 

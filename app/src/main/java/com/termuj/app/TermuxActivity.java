@@ -50,11 +50,11 @@ import com.termuj.shared.interact.TextInputDialogUtils;
 import com.termuj.shared.logger.Logger;
 import com.termuj.shared.termux.TermuxUtils;
 import com.termuj.shared.view.ViewUtils;
-import com.termux.terminal.TerminalSession;
-import com.termux.terminal.TerminalSessionClient;
+import com.termuj.terminal.TerminalSession;
+import com.termuj.terminal.TerminalSessionClient;
 import com.termuj.app.utils.CrashUtils;
-import com.termux.view.TerminalView;
-import com.termux.view.TerminalViewClient;
+import com.termuj.view.TerminalView;
+import com.termuj.view.TerminalViewClient;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

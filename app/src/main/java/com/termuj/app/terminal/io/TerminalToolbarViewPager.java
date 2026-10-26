@@ -12,7 +12,7 @@ import androidx.viewpager.widget.ViewPager;
 import com.termuj.R;
 import com.termuj.app.TermuxActivity;
 import com.termuj.shared.terminal.io.extrakeys.ExtraKeysView;
-import com.termux.terminal.TerminalSession;
+import com.termuj.terminal.TerminalSession;
 
 public class TerminalToolbarViewPager {
 

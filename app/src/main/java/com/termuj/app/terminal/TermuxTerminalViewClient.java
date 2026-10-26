@@ -41,10 +41,10 @@ import com.termuj.shared.markdown.MarkdownUtils;
 import com.termuj.shared.termux.TermuxUtils;
 import com.termuj.shared.view.KeyboardUtils;
 import com.termuj.shared.view.ViewUtils;
-import com.termux.terminal.KeyHandler;
-import com.termux.terminal.TerminalBuffer;
-import com.termux.terminal.TerminalEmulator;
-import com.termux.terminal.TerminalSession;
+import com.termuj.terminal.KeyHandler;
+import com.termuj.terminal.TerminalBuffer;
+import com.termuj.terminal.TerminalEmulator;
+import com.termuj.terminal.TerminalSession;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -141,7 +141,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     }
 
     /**
-     * Should be called when {@link com.termux.view.TerminalView#mEmulator} is set
+     * Should be called when {@link com.termuj.view.TerminalView#mEmulator} is set
      */
     @Override
     public void onEmulatorSet() {

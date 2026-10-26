@@ -21,7 +21,7 @@ import androidx.core.content.ContextCompat;
 import com.termuj.R;
 import com.termuj.app.TermuxActivity;
 import com.termuj.shared.shell.TermuxSession;
-import com.termux.terminal.TerminalSession;
+import com.termuj.terminal.TerminalSession;
 
 import java.util.List;
 

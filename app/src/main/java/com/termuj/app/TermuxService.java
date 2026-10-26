@@ -42,9 +42,9 @@ import com.termuj.shared.packages.PermissionUtils;
 import com.termuj.shared.data.DataUtils;
 import com.termuj.shared.models.ExecutionCommand;
 import com.termuj.shared.shell.TermuxTask;
-import com.termux.terminal.TerminalEmulator;
-import com.termux.terminal.TerminalSession;
-import com.termux.terminal.TerminalSessionClient;
+import com.termuj.terminal.TerminalEmulator;
+import com.termuj.terminal.TerminalSession;
+import com.termuj.terminal.TerminalSessionClient;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -235,10 +235,10 @@ public class TermuxFileUtils {
      * https://unix.stackexchange.com/a/571959
      *
      *
-     * Also note that running `/system/bin/ls -lhd /data/user/0/com.termux` as secondary user will result
-     * in `ls: /data/user/0/com.termux: Permission denied` where `0` is primary user id but running
-     * `/system/bin/ls -lhd /data/user/10/com.termux` will result in
-     * `drwx------ 6 u10_a149 u10_a149 4.0K 2021-xx-xx xx:xx /data/user/10/com.termux` where `10` is
+     * Also note that running `/system/bin/ls -lhd /data/user/0/com.termuj` as secondary user will result
+     * in `ls: /data/user/0/com.termuj: Permission denied` where `0` is primary user id but running
+     * `/system/bin/ls -lhd /data/user/10/com.termuj` will result in
+     * `drwx------ 6 u10_a149 u10_a149 4.0K 2021-xx-xx xx:xx /data/user/10/com.termuj` where `10` is
      * secondary user id. So can't stat directory (not contents) of primary user from secondary user
      * but can the other way around. However, this is happening on android 10 avd, but not on android
      * 11 avd.

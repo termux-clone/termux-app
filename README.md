@@ -250,7 +250,7 @@ The `versionName` in `build.gradle` files of Termux and its plugin apps must fol
 
 ## Forking
 
-- This fork (`termuj` branch) uses the package name `com.termuj` (app classes in `com.termuj`, `termux-shared` classes in `com.termuj.shared`). Instead of recompiling the bootstrap and packages, it uses the same-length hexpatching approach of [termux/termux-app#2734 (comment)](https://github.com/termux/termux-app/issues/2734#issuecomment-1747413134):
+- This fork (`termuj` branch) is named `Termuj` and uses the package name `com.termuj` (app classes in `com.termuj`, `termux-shared` in `com.termuj.shared`, `terminal-emulator` in `com.termuj.terminal`, `terminal-view` in `com.termuj.view`). Instead of recompiling the bootstrap and packages, it uses the same-length hexpatching approach of [termux/termux-app#2734 (comment)](https://github.com/termux/termux-app/issues/2734#issuecomment-1747413134):
     - At build time, [`termuj/hexpatch-bootstrap.py`](termuj/hexpatch-bootstrap.py) replaces every `com.termux` with `com.termuj` in the official bootstrap zips (recomputing dpkg `md5sums`) and adds the files of [`termuj/bootstrap-overlay`](termuj/bootstrap-overlay).
     - On the device, `apt`/`pkg` runs [`termuj-hexpatch-deb`](termuj/bootstrap-overlay/bin/termuj-hexpatch-deb) through the `DPkg::Pre-Install-Pkgs` hook to hexpatch every official `.deb` before `dpkg` unpacks it. `.deb` files installed directly with `dpkg -i` must be patched first with `termuj-hexpatch-deb <file.deb>`.
 - Check [`TermuxConstants`](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java) javadocs for instructions on what changes to make in the app to change package name.

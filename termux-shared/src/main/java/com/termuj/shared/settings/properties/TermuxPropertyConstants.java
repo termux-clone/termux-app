@@ -5,8 +5,8 @@ import androidx.annotation.NonNull;
 import com.google.common.collect.ImmutableBiMap;
 import com.termuj.shared.termux.TermuxConstants;
 import com.termuj.shared.logger.Logger;
-import com.termux.terminal.TerminalEmulator;
-import com.termux.view.TerminalView;
+import com.termuj.terminal.TerminalEmulator;
+import com.termuj.view.TerminalView;
 
 import java.io.File;
 import java.util.Arrays;

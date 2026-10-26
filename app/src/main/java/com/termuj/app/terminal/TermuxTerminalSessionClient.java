@@ -23,9 +23,9 @@ import com.termuj.app.TermuxService;
 import com.termuj.shared.settings.properties.TermuxPropertyConstants;
 import com.termuj.shared.terminal.io.BellHandler;
 import com.termuj.shared.logger.Logger;
-import com.termux.terminal.TerminalColors;
-import com.termux.terminal.TerminalSession;
-import com.termux.terminal.TextStyle;
+import com.termuj.terminal.TerminalColors;
+import com.termuj.terminal.TerminalSession;
+import com.termuj.terminal.TextStyle;
 
 import java.io.File;
 import java.io.FileInputStream;
