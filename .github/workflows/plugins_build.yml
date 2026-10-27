@@ -1,0 +1,116 @@
+name: Build plugins
+
+on:
+  push:
+    branches:
+      - termuj
+    paths:
+      - termuj/rename-to-termuj.py
+      - .github/workflows/plugins_build.yml
+  pull_request:
+    branches:
+      - termuj
+    paths:
+      - termuj/rename-to-termuj.py
+      - .github/workflows/plugins_build.yml
+  workflow_dispatch:
+
+env:
+  # Latest official release tags of the Termux plugin apps, as "<name>:<tag>" of github.com/termux/termux-<name>
+  PLUGINS: "api:v0.53.0 boot:v0.8.1 float:v0.17.0 styling:v0.32.1 tasker:v0.9.0 widget:v0.15.0"
+
+jobs:
+  termux-libraries:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.libraries.outputs.matrix }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Build termux-shared libraries used by the plugins
+        id: libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Each plugin release pins the termux-app commit of its termux-shared/terminal-view
+          # dependencies (published by JitPack). Build those commits renamed to com.termuj.
+          commits=""
+          matrix=""
+          for plugin in $PLUGINS; do
+            name="${plugin%%:*}" tag="${plugin#*:}"
+            git clone -q --depth 1 -b "$tag" "https://github.com/termux/termux-$name.git" "plugin-$name"
+            commit="$(grep -oE "com\.termux\.termux-app:[a-z-]+:[0-9a-f]+" "plugin-$name/app/build.gradle" | head -n 1 | sed 's/.*://')" || true
+            echo "termux-$name $tag: termux-app libraries ${commit:-not used}"
+            [ -n "$commit" ] && commits+="$commit"$'\n'
+            matrix+="${matrix:+,}{\"name\":\"$name\",\"tag\":\"$tag\"}"
+          done
+          echo "matrix={\"include\":[$matrix]}" >> "$GITHUB_OUTPUT"
+
+          for commit in $(printf '%s' "$commits" | sort -u); do
+            echo "Building termux-app $commit libraries"
+            git clone -q --filter=blob:none --no-checkout https://github.com/termux/termux-app.git "termux-app-$commit"
+            git -C "termux-app-$commit" checkout -q "$commit"
+            python3 termuj/rename-to-termuj.py "termux-app-$commit"
+            # Publish with the coordinates the renamed plugins depend on: com.termuj.termux-app:<library>:<commit>
+            sed -i -E -e "s/^(\s*groupId = )'com\.termuj'/\1'com.termuj.termux-app'/" -e "s/^(\s*version = )'[^']*'/\1'$commit'/" \
+              "termux-app-$commit"/{termux-shared,terminal-view,terminal-emulator}/build.gradle
+            (cd "termux-app-$commit" && ./gradlew :terminal-emulator:publishReleasePublicationToMavenLocal \
+              :terminal-view:publishReleasePublicationToMavenLocal :termux-shared:publishReleasePublicationToMavenLocal)
+          done
+
+          mkdir -p libraries
+          [ -d ~/.m2/repository/com/termuj ] && cp -r ~/.m2/repository/com/termuj libraries/
+          find libraries -name '*.pom'
+
+      - name: Upload libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-libraries
+          path: libraries
+          if-no-files-found: ignore
+
+  plugin:
+    needs: termux-libraries
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.termux-libraries.outputs.matrix) }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Download libraries
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: termux-libraries
+          path: libraries
+
+      - name: Build termuj-${{ matrix.name }}-app
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.m2/repository/com
+          [ -d libraries/termuj ] && cp -r libraries/termuj ~/.m2/repository/com/
+
+          git clone -q --depth 1 -b "${{ matrix.tag }}" "https://github.com/termux/termux-${{ matrix.name }}.git" plugin
+          python3 termuj/rename-to-termuj.py plugin
+          sed -i -E 's|^(\s*)//\s*mavenLocal\(\)|\1mavenLocal()|' plugin/build.gradle
+
+          cd plugin
+          ./gradlew assembleDebug
+
+          APK_DIR_PATH="plugin/app/build/outputs/apk/debug"
+          (cd app/build/outputs/apk/debug && ls *.apk && sha256sum *.apk > checksums-sha256.txt && cat checksums-sha256.txt)
+          echo "APK_DIR_PATH=$APK_DIR_PATH" >> "$GITHUB_ENV"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: termuj-${{ matrix.name }}-app_${{ matrix.tag }}
+          path: |
+            ${{ env.APK_DIR_PATH }}/*.apk
+            ${{ env.APK_DIR_PATH }}/checksums-sha256.txt
