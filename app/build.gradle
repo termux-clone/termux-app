@@ -38,12 +38,12 @@ android {
 
         manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termuj"
         manifestPlaceholders.TERMUX_APP_NAME = "Termuj"
-        manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
-        manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"
-        manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "Termux:Float"
-        manifestPlaceholders.TERMUX_STYLING_APP_NAME = "Termux:Styling"
-        manifestPlaceholders.TERMUX_TASKER_APP_NAME = "Termux:Tasker"
-        manifestPlaceholders.TERMUX_WIDGET_APP_NAME = "Termux:Widget"
+        manifestPlaceholders.TERMUX_API_APP_NAME = "Termuj:API"
+        manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termuj:Boot"
+        manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "Termuj:Float"
+        manifestPlaceholders.TERMUX_STYLING_APP_NAME = "Termuj:Styling"
+        manifestPlaceholders.TERMUX_TASKER_APP_NAME = "Termuj:Tasker"
+        manifestPlaceholders.TERMUX_WIDGET_APP_NAME = "Termuj:Widget"
 
         externalNativeBuild {
             ndkBuild {
@@ -146,7 +146,7 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     def digest = java.security.MessageDigest.getInstance("SHA-256")
 
     // The official bootstrap is downloaded to the build directory and then hexpatched from
-    // "com.termuj" to "com.termuj" into src/main/cpp by hexpatchBootstrap().
+    // "com.termux" to "com.termuj" into src/main/cpp by hexpatchBootstrap().
     def localUrl = "build/bootstrap-original/bootstrap-" + arch + ".zip"
     def file = new File(projectDir, localUrl)
     if (file.exists()) {
