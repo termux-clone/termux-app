@@ -292,14 +292,9 @@ public class TermujHexpatch {
         }
         if (entries.isEmpty()) throw new IOException("No zip entries found");
         if (!changed) return data;
-        // The apk signature is not checked when loading classes with app_process or a jar on
-        // the classpath, but a jar signature that does not match the content would be rejected.
-        // The patched archive can not be installed as an app anymore if it was signed.
-        if (signed) warn("removing the now invalid v1 (jar) signature of a patched archive");
-        String schemes = apkSigningBlockSchemes(data);
-        if (schemes != null) warn("removing the now invalid APK Signing Block (" + schemes + ") of a patched archive");
-        if (depth == 0 && currentFile != null && new File(currentFile + ".idsig").exists())
-            warn("the v4 signature " + currentFile + ".idsig is now invalid");
+        // Signatures become invalid. The apk signature is not checked when loading classes with
+        // app_process, but a jar signature that does not match the content would be rejected, so
+        // jar (v1) signature files are removed.
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try (ZipOutputStream zout = new ZipOutputStream(bos)) {
@@ -325,48 +320,6 @@ public class TermujHexpatch {
             }
         }
         return bos.toByteArray();
-    }
-
-    private static long u64(byte[] d, int off) {
-        return (u32(d, off) & 0xffffffffL) | (long) u32(d, off + 4) << 32;
-    }
-
-    /**
-     * Returns the signature schemes found in the APK Signing Block (stored right before the zip
-     * central directory, used by the v2 and later schemes), or null if there is none.
-     * See https://source.android.com/docs/security/features/apksigning/v2#apk-signing-block
-     */
-    private static String apkSigningBlockSchemes(byte[] d) {
-        int eocd = -1;
-        for (int i = d.length - 22; i >= Math.max(0, d.length - 22 - 65535); i--) {
-            if (d[i] == 'P' && d[i + 1] == 'K' && d[i + 2] == 5 && d[i + 3] == 6) {
-                eocd = i;
-                break;
-            }
-        }
-        if (eocd < 0) return null;
-        long cd = u32(d, eocd + 16) & 0xffffffffL;
-        if (cd < 32 || cd > eocd) return null;
-        int magic = (int) cd - 16;
-        if (!new String(d, magic, 16, java.nio.charset.StandardCharsets.ISO_8859_1).equals("APK Sig Block 42")) return null;
-
-        List<String> schemes = new ArrayList<>();
-        long size = u64(d, magic - 8);
-        long start = cd - size - 8;
-        if (start >= 0 && size >= 24 && u64(d, (int) start) == size) {
-            int p = (int) start + 8;
-            int end = magic - 8;
-            while (p + 12 <= end) {
-                long len = u64(d, p);
-                if (len < 4 || len > end - p - 8) break;
-                int id = u32(d, p + 8);
-                if (id == 0x7109871a) schemes.add("v2");
-                else if (id == 0xf05368c0) schemes.add("v3");
-                else if (id == 0x1b93ad61) schemes.add("v3.1");
-                p += 8 + (int) len;
-            }
-        }
-        return schemes.isEmpty() ? "unknown scheme" : String.join(", ", schemes);
     }
 
     // ---------------------------------------------------------------- tar
