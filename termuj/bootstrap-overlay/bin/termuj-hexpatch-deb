@@ -1,7 +1,9 @@
 #!/data/data/com.termuj/files/usr/bin/sh
 # Hexpatch Termux .deb packages built for "com.termux" so that they can be
 # installed by the "com.termuj" app. As both package names have the same
-# length, every occurrence is replaced in-place (binaries included).
+# length, every occurrence is replaced in-place (binaries included). The
+# content of compressed archives (zip/apk/jar, gzip, xz, bzip2) is patched too
+# and checksums are fixed up, by the TermujHexpatch helper (run by app_process).
 # See https://github.com/termux/termux-app/issues/2734#issuecomment-1747413134
 #
 # Called by apt via "DPkg::Pre-Install-Pkgs" (deb paths on stdin) before dpkg
@@ -14,6 +16,7 @@ OLD="com.termu""x"
 OLD_RE="com\\.termu""x"
 NEW="com.termuj"
 PREFIX="/data/data/$NEW/files/usr"
+HELPER="$PREFIX/libexec/termuj-hexpatch.jar"
 export LC_ALL=C
 
 # Create an ar archive like "ar cr" does, as binutils is not part of the bootstrap.
@@ -34,6 +37,18 @@ tar_create() {
 	(cd "$1" && tar --sort=name --owner=0 --group=0 --numeric-owner -H gnu -cf - .) | gzip -1 > "$2"
 }
 
+# Patch the files whose NUL separated paths are on stdin, print the number of changed files.
+hexpatch_files() {
+	# Android 14 refuses to load writable dex files.
+	if [ -w "$HELPER" ]; then
+		chmod 0400 "$HELPER"
+	fi
+	(
+		unset LD_LIBRARY_PATH LD_PRELOAD
+		CLASSPATH="$HELPER" exec /system/bin/app_process -Xnoimage-dex2oat / TermujHexpatch
+	)
+}
+
 patch_deb() {
 	deb="$1"
 	tmp="$(mktemp -d "$PREFIX/tmp/termuj-hexpatch.XXXXXX")"
@@ -44,7 +59,10 @@ patch_deb() {
 	dpkg-deb --ctrl-tarfile "$deb" | tar -xpf - -C "$ctrl"
 	dpkg-deb --fsys-tarfile "$deb" | tar -xpf - -C "$data"
 
-	if ! grep -rqaF "$OLD" "$ctrl" "$data" && [ -z "$(find "$data" -name "*$OLD*" -print -quit)" ] && \
+	# File contents
+	changed="$(find "$ctrl" "$data" -type f -print0 | hexpatch_files)"
+
+	if [ "$changed" = 0 ] && [ -z "$(find "$data" -name "*$OLD*" -print -quit)" ] && \
 		[ -z "$(find "$data" -type l -lname "*$OLD*" -print -quit)" ]; then
 		rm -rf "$tmp"
 		tmp=""
@@ -52,9 +70,6 @@ patch_deb() {
 	fi
 
 	echo "termuj-hexpatch: patching $(basename "$deb")"
-
-	# File contents
-	find "$ctrl" "$data" -type f -print0 | xargs -0 -r grep -lZaF "$OLD" | xargs -0 -r sed -i "s/$OLD_RE/$NEW/g"
 
 	# Symlink targets
 	find "$data" -type l -lname "*$OLD*" | while IFS= read -r link; do

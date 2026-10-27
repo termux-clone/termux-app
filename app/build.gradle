@@ -190,19 +190,49 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     hexpatchBootstrap(arch, file)
 }
 
+// The TermujHexpatch helper patches file contents, including inside compressed archives. It is
+// run on the build JVM to hexpatch the bootstrap and, dexed, by the apt hook in the bootstrap.
+def termujHexpatchClassesDir = new File(buildDir, "termuj-hexpatch/classes")
+def termujHexpatchJar = new File(buildDir, "termuj-hexpatch/termuj-hexpatch.jar")
+
+task compileTermujHexpatch(type: JavaCompile) {
+    source = fileTree(new File(rootDir, "termuj/hexpatch")).include("**/*.java")
+    classpath = files()
+    destinationDirectory.set(termujHexpatchClassesDir)
+    options.release.set(8)
+}
+
+task dexTermujHexpatch(dependsOn: compileTermujHexpatch) {
+    inputs.dir(termujHexpatchClassesDir)
+    outputs.file(termujHexpatchJar)
+    doLast {
+        termujHexpatchJar.delete()
+        com.android.tools.r8.D8.run(com.android.tools.r8.D8Command.builder()
+            .addProgramFiles(fileTree(termujHexpatchClassesDir).include("**/*.class").files.collect { it.toPath() })
+            .addLibraryFiles(android.bootClasspath.collect { it.toPath() })
+            .setMinApiLevel(project.properties.minSdkVersion.toInteger())
+            .setMode(com.android.tools.r8.CompilationMode.RELEASE)
+            .setOutput(termujHexpatchJar.toPath(), com.android.tools.r8.OutputMode.DexIndexed)
+            .build())
+    }
+}
+
 def hexpatchBootstrap(String arch, File originalFile) {
     def script = new File(rootDir, "termuj/hexpatch-bootstrap.py")
     def overlayDir = new File(rootDir, "termuj/bootstrap-overlay")
+    def classesDir = new File(buildDir, "termuj-hexpatch/classes")
+    def helperJar = new File(buildDir, "termuj-hexpatch/termuj-hexpatch.jar")
     def patchedFile = new File(projectDir, "src/main/cpp/bootstrap-" + arch + ".zip")
 
-    def inputsLastModified = [originalFile.lastModified(), script.lastModified()]
+    def inputsLastModified = [originalFile.lastModified(), script.lastModified(), helperJar.lastModified()]
     overlayDir.eachFileRecurse { inputsLastModified << it.lastModified() }
     if (patchedFile.exists() && patchedFile.lastModified() > inputsLastModified.max()) return
 
     logger.quiet("Hexpatching " + originalFile + " to " + patchedFile + " ...")
     patchedFile.parentFile.mkdirs()
     exec {
-        commandLine "python3", script.absolutePath, originalFile.absolutePath, patchedFile.absolutePath, overlayDir.absolutePath
+        commandLine "python3", script.absolutePath, originalFile.absolutePath, patchedFile.absolutePath, overlayDir.absolutePath,
+            new File(System.getProperty("java.home"), "bin/java").absolutePath, classesDir.absolutePath, helperJar.absolutePath
     }
 }
 
@@ -214,7 +244,7 @@ clean {
     }
 }
 
-task downloadBootstraps() {
+task downloadBootstraps(dependsOn: dexTermujHexpatch) {
     doLast {
         def version = "2025.03.28-r1+apt-android-7"
         downloadBootstrap("aarch64", "c8d702b6f742935001c37cda81b8ac69504a95d5cf28f2899532dd8cd4b057eb", version)
