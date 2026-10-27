@@ -80,8 +80,9 @@ def main():
             with open(full, "rb") as f:
                 files[rel] = (f.read(), 0o755 if os.stat(full).st_mode & 0o111 else 0o644)
     with open(helper_jar, "rb") as f:
-        # Android 14 refuses to load writable dex files.
-        files["libexec/termuj-hexpatch.jar"] = (f.read(), 0o400)
+        # Not read-only, as dpkg reopens unpacked files for writing to sync them. The hook
+        # makes it read-only before running it, as Android 14 refuses writable dex files.
+        files["libexec/termuj-hexpatch.jar"] = (f.read(), 0o644)
 
     bad = [rel for rel, (data, _) in files.items() if contains_old(data) or OLD in rel.encode()]
     if bad:
