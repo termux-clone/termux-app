@@ -406,6 +406,30 @@ public final class TerminalBuffer {
     }
 
     /**
+     * Insert {@code count} blank full-width lines at {@code row}, pushing the lines in [row, bottomMargin) down and
+     * discarding those pushed past bottomMargin. Moves row references instead of copying cells like
+     * {@link #blockCopy}, so it is only valid when the left and right margins span the whole screen width.
+     */
+    public void insertBlankLines(int row, int bottomMargin, int count, long style) {
+        if (row < 0 || bottomMargin > mScreenRows || count < 1 || row + count > bottomMargin)
+            throw new IllegalArgumentException("row=" + row + ", bottomMargin=" + bottomMargin + ", count=" + count + ", mScreenRows=" + mScreenRows);
+
+        int rowInternal = externalToInternalRow(row);
+        for (int i = 0; i < count; i++)
+            blockCopyLinesDown(rowInternal, bottomMargin - row - 1);
+
+        for (int i = 0; i < count; i++) {
+            int blankRow = externalToInternalRow(row + i);
+            if (mLines[blankRow] == null) {
+                mLines[blankRow] = new TerminalRow(mColumns, style);
+            } else {
+                mLines[blankRow].clear(style);
+                mLines[blankRow].mLineWrap = false;
+            }
+        }
+    }
+
+    /**
      * Block copy characters from one position in the screen to another. The two positions can overlap. All characters
      * of the source and destination must be within the bounds of the screen, or else an InvalidParameterException will
      * be thrown.

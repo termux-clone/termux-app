@@ -1459,8 +1459,12 @@ public final class TerminalEmulator {
                 // http://www.vt100.net/docs/vt100-ug/chapter3.html: "Move the active position to the same horizontal
                 // position on the preceding line. If the active position is at the top margin, a scroll down is performed".
                 if (mCursorRow <= mTopMargin) {
-                    mScreen.blockCopy(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin, mBottomMargin - (mTopMargin + 1), mLeftMargin, mTopMargin + 1);
-                    blockClear(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin);
+                    if (isFullWidthScrollRegion()) {
+                        mScreen.insertBlankLines(mTopMargin, mBottomMargin, 1, getStyle());
+                    } else {
+                        mScreen.blockCopy(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin, mBottomMargin - (mTopMargin + 1), mLeftMargin, mTopMargin + 1);
+                        blockClear(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin);
+                    }
                 } else {
                     mCursorRow--;
                 }
@@ -1625,8 +1629,12 @@ public final class TerminalEmulator {
                 int linesAfterCursor = mBottomMargin - mCursorRow;
                 int linesToInsert = Math.min(getArg0(1), linesAfterCursor);
                 int linesToMove = linesAfterCursor - linesToInsert;
-                mScreen.blockCopy(0, mCursorRow, mColumns, linesToMove, 0, mCursorRow + linesToInsert);
-                blockClear(0, mCursorRow, mColumns, linesToInsert);
+                if (linesToInsert > 0) {
+                    mScreen.insertBlankLines(mCursorRow, mBottomMargin, linesToInsert, getStyle());
+                } else {
+                    mScreen.blockCopy(0, mCursorRow, mColumns, linesToMove, 0, mCursorRow + linesToInsert);
+                    blockClear(0, mCursorRow, mColumns, linesToInsert);
+                }
             }
             break;
             case 'M': // "${CSI}${N}M" - delete N lines (DL).
@@ -1669,8 +1677,12 @@ public final class TerminalEmulator {
                     final int linesToScrollArg = getArg0(1);
                     final int linesBetweenTopAndBottomMargins = mBottomMargin - mTopMargin;
                     final int linesToScroll = Math.min(linesBetweenTopAndBottomMargins, linesToScrollArg);
-                    mScreen.blockCopy(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin, linesBetweenTopAndBottomMargins - linesToScroll, mLeftMargin, mTopMargin + linesToScroll);
-                    blockClear(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin, linesToScroll);
+                    if (isFullWidthScrollRegion() && linesToScroll > 0) {
+                        mScreen.insertBlankLines(mTopMargin, mBottomMargin, linesToScroll, getStyle());
+                    } else {
+                        mScreen.blockCopy(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin, linesBetweenTopAndBottomMargins - linesToScroll, mLeftMargin, mTopMargin + linesToScroll);
+                        blockClear(mLeftMargin, mTopMargin, mRightMargin - mLeftMargin, linesToScroll);
+                    }
                 } else {
                     // "${CSI}${func};${startx};${starty};${firstrow};${lastrow}T" - initiate highlight mouse tracking.
                     unimplementedSequence(b);
@@ -2150,6 +2162,10 @@ public final class TerminalEmulator {
                 break;
         }
         finishSequence();
+    }
+
+    private boolean isFullWidthScrollRegion() {
+        return mLeftMargin == 0 && mRightMargin == mColumns;
     }
 
     private void blockClear(int sx, int sy, int w) {
