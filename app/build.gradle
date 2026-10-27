@@ -191,9 +191,11 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
 }
 
 // The TermujHexpatch helper patches file contents, including inside compressed archives. It is
-// run on the build JVM to hexpatch the bootstrap and, dexed, by the apt hook in the bootstrap.
+// run on the build JVM to hexpatch the bootstrap and, dexed, by the apt hook of the
+// termuj-hexpatch package, which is preinstalled in the bootstrap.
 def termujHexpatchClassesDir = new File(buildDir, "termuj-hexpatch/classes")
 def termujHexpatchJar = new File(buildDir, "termuj-hexpatch/termuj-hexpatch.jar")
+def termujHexpatchDebDir = new File(buildDir, "termuj-hexpatch/deb")
 
 task compileTermujHexpatch(type: JavaCompile) {
     source = fileTree(new File(rootDir, "termuj/hexpatch")).include("**/*.java")
@@ -217,14 +219,30 @@ task dexTermujHexpatch(dependsOn: compileTermujHexpatch) {
     }
 }
 
+task buildTermujHexpatchDeb(dependsOn: dexTermujHexpatch) {
+    def packageDir = new File(rootDir, "termuj/hexpatch")
+    def script = new File(rootDir, "termuj/build-hexpatch-deb.py")
+    inputs.files(termujHexpatchJar, script, new File(packageDir, "control"))
+    inputs.dir(new File(packageDir, "files"))
+    outputs.dir(termujHexpatchDebDir)
+    doLast {
+        delete termujHexpatchDebDir
+        exec {
+            commandLine "python3", script.absolutePath, packageDir.absolutePath, termujHexpatchJar.absolutePath, termujHexpatchDebDir.absolutePath
+        }
+    }
+}
+
 def hexpatchBootstrap(String arch, File originalFile) {
     def script = new File(rootDir, "termuj/hexpatch-bootstrap.py")
     def overlayDir = new File(rootDir, "termuj/bootstrap-overlay")
     def classesDir = new File(buildDir, "termuj-hexpatch/classes")
-    def helperJar = new File(buildDir, "termuj-hexpatch/termuj-hexpatch.jar")
+    def debs = new File(buildDir, "termuj-hexpatch/deb").listFiles().findAll { it.name.endsWith(".deb") }
+    if (debs.size() != 1) throw new GradleException("Expected one termuj-hexpatch deb, found: " + debs)
+    def deb = debs[0]
     def patchedFile = new File(projectDir, "src/main/cpp/bootstrap-" + arch + ".zip")
 
-    def inputsLastModified = [originalFile.lastModified(), script.lastModified(), helperJar.lastModified()]
+    def inputsLastModified = [originalFile.lastModified(), script.lastModified(), deb.lastModified()]
     overlayDir.eachFileRecurse { inputsLastModified << it.lastModified() }
     if (patchedFile.exists() && patchedFile.lastModified() > inputsLastModified.max()) return
 
@@ -232,7 +250,7 @@ def hexpatchBootstrap(String arch, File originalFile) {
     patchedFile.parentFile.mkdirs()
     exec {
         commandLine "python3", script.absolutePath, originalFile.absolutePath, patchedFile.absolutePath, overlayDir.absolutePath,
-            new File(System.getProperty("java.home"), "bin/java").absolutePath, classesDir.absolutePath, helperJar.absolutePath
+            new File(System.getProperty("java.home"), "bin/java").absolutePath, classesDir.absolutePath, deb.absolutePath
     }
 }
 
@@ -244,7 +262,7 @@ clean {
     }
 }
 
-task downloadBootstraps(dependsOn: dexTermujHexpatch) {
+task downloadBootstraps(dependsOn: buildTermujHexpatchDeb) {
     doLast {
         def version = "2025.03.28-r1+apt-android-7"
         downloadBootstrap("aarch64", "c8d702b6f742935001c37cda81b8ac69504a95d5cf28f2899532dd8cd4b057eb", version)

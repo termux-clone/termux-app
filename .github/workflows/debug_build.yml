@@ -54,6 +54,15 @@ jobs:
             fi
           done
 
+          echo "Copying termuj-hexpatch package"
+          DEB_PATHS=(./app/build/termuj-hexpatch/deb/*.deb)
+          if [ "${#DEB_PATHS[@]}" != 1 ] || ! test -f "${DEB_PATHS[0]}"; then
+            exit_on_error "Expected one termuj-hexpatch package, found: ${DEB_PATHS[*]}"
+          fi
+          DEB_NAME="$(basename "${DEB_PATHS[0]}")"
+          cp "${DEB_PATHS[0]}" "$APK_DIR_PATH/" || exit_on_error "Failed to copy $DEB_NAME"
+          echo "DEB_NAME=$DEB_NAME" >> $GITHUB_ENV
+
           echo "Generating sha25sums file"
           if ! (cd "$APK_DIR_PATH"; sha256sum \
             "${APK_BASENAME_PREFIX}_universal.apk" \
@@ -61,6 +70,7 @@ jobs:
             "${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
             "${APK_BASENAME_PREFIX}_x86_64.apk" \
             "${APK_BASENAME_PREFIX}_x86.apk" \
+            "$DEB_NAME" \
             > sha256sums); then
             exit_on_error "Generate sha25sums failed for '$RELEASE_VERSION_NAME' release."
           fi
@@ -104,6 +114,12 @@ jobs:
           path: |
             ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_x86.apk
             ${{ env.APK_DIR_PATH }}/output-metadata.json
+
+      - name: Attach termuj-hexpatch package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DEB_NAME }}
+          path: ${{ env.APK_DIR_PATH }}/${{ env.DEB_NAME }}
 
       - name: Attach sha256sums file
         uses: actions/upload-artifact@v4

@@ -1,5 +1,5 @@
 #!/data/data/com.termuj/files/usr/bin/sh
-# Hexpatch Termux .deb packages built for "com.termux" so that they can be
+# Hexpatch .deb packages built for the official Termux app so that they can be
 # installed by the "com.termuj" app. As both package names have the same
 # length, every occurrence is replaced in-place (binaries included). The
 # content of compressed archives (zip/apk/jar, gzip, xz, bzip2) is patched too

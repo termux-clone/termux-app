@@ -1,0 +1,9 @@
+Package: termuj-hexpatch
+Version: 1.0.0
+Architecture: all
+Maintainer: @w311ang
+Homepage: https://github.com/termux-clone/termux-app
+Depends: bzip2, coreutils, dpkg, findutils, grep, gzip, sed, tar, xz-utils
+Description: Hexpatch Termux packages for the Termuj app
+ apt hook that patches every .deb built for the official Termux app before
+ it is unpacked, including the content of compressed archives.

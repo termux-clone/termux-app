@@ -34,11 +34,16 @@ import java.util.zip.ZipOutputStream;
  */
 public class TermujHexpatch {
 
-    // Split so that this helper itself is never matched by a hexpatch.
-    private static final byte[] OLD = ("com.termu" + "x").getBytes();
+    // Built at runtime, as the compiler folds constant concatenations, so that the dexed helper
+    // itself never contains the old name and is not matched by a hexpatch.
+    private static final byte[] OLD = concat("com.termu", "x").getBytes();
     private static final byte[] NEW = "com.termuj".getBytes();
-    private static final byte[] OLD_PATH = ("com/termu" + "x").getBytes();
+    private static final byte[] OLD_PATH = concat("com/termu", "x").getBytes();
     private static final byte[] NEW_PATH = "com/termuj".getBytes();
+
+    private static String concat(String a, String b) {
+        return a.concat(b);
+    }
 
     private static final int MAX_DEPTH = 8;
 
@@ -46,9 +51,14 @@ public class TermujHexpatch {
 
     public static void main(String[] args) throws Exception {
         int changed = 0;
-        for (String path : readPaths(System.in)) {
-            currentFile = path;
-            if (patchFile(new File(path))) changed++;
+        try {
+            for (String path : readPaths(System.in)) {
+                currentFile = path;
+                if (patchFile(new File(path))) changed++;
+            }
+        } catch (Exception e) {
+            System.err.println("termuj-hexpatch: error: " + currentFile + ": " + e);
+            System.exit(1);
         }
         System.out.println(changed);
     }
@@ -79,6 +89,17 @@ public class TermujHexpatch {
     // ---------------------------------------------------------------- files
 
     private static boolean patchFile(File file) throws IOException {
+        // Packages may contain read-only files, restore their mode afterwards.
+        boolean readOnly = !file.canWrite();
+        if (readOnly && !file.setWritable(true, true)) throw new IOException("Failed to make writable");
+        try {
+            return patchWritableFile(file);
+        } finally {
+            if (readOnly) file.setWritable(false, true);
+        }
+    }
+
+    private static boolean patchWritableFile(File file) throws IOException {
         try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
             byte[] head = new byte[263];
             int n = readFully(raf, head);
