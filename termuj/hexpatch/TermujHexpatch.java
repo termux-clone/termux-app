@@ -292,9 +292,9 @@ public class TermujHexpatch {
         }
         if (entries.isEmpty()) throw new IOException("No zip entries found");
         if (!changed) return data;
-        // Signatures become invalid. The apk signature is not checked when loading classes with
-        // app_process, but a jar signature that does not match the content would be rejected, so
-        // jar (v1) signature files are removed.
+        // The apk signature is not checked when loading classes with app_process or a jar on
+        // the classpath, but a jar signature that does not match the content would be rejected.
+        if (signed) warn("removing the now invalid jar signature of a patched archive");
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try (ZipOutputStream zout = new ZipOutputStream(bos)) {
