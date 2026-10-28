@@ -45,6 +45,8 @@ hexpatch_files() {
 	fi
 	(
 		unset LD_LIBRARY_PATH LD_PRELOAD
+		# For the scratch files of the helper.
+		export TMPDIR="$PREFIX/tmp"
 		CLASSPATH="$HELPER" exec /system/bin/app_process -Xnoimage-dex2oat / TermujHexpatch
 	)
 }
