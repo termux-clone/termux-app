@@ -6,18 +6,27 @@ on:
       - termuj
     paths:
       - termuj/rename-to-termuj.py
+      - termuj/debpkg.py
+      - termuj/build-python-termuxgui-deb.py
       - .github/workflows/plugins_build.yml
   pull_request:
     branches:
       - termuj
     paths:
       - termuj/rename-to-termuj.py
+      - termuj/debpkg.py
+      - termuj/build-python-termuxgui-deb.py
       - .github/workflows/plugins_build.yml
+  release:
+    types:
+      - published
   workflow_dispatch:
 
 env:
   # Latest official release tags of the Termux plugin apps, as "<name>:<tag>" of github.com/termux/termux-<name>
   PLUGINS: "api:v0.53.0 boot:v0.8.1 float:v0.17.0 gui:0.1.6 styling:v0.32.1 tasker:v0.9.0 widget:v0.15.0"
+  # Latest tag of github.com/tareksander/termux-gui-python-bindings, the termuxgui Python module for Termux:GUI
+  PYTHON_TERMUXGUI_TAG: "0.1.6"
 
 jobs:
   termux-libraries:
@@ -119,3 +128,79 @@ jobs:
           path: |
             ${{ env.APK_DIR_PATH }}/*.apk
             ${{ env.APK_DIR_PATH }}/checksums-sha256.txt
+
+  python-termuxgui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Build python-termuxgui package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git clone -q --depth 1 -b "$PYTHON_TERMUXGUI_TAG" https://github.com/tareksander/termux-gui-python-bindings.git termuxgui
+
+          # The module is installed in lib/python<major>.<minor>, so use the Python version of the Termux repository
+          curl -fsSL --retry 5 -o Packages https://packages-cf.termux.dev/apt/termux-main/dists/stable/main/binary-aarch64/Packages
+          PYTHON_VERSION="$(awk '/^Package: /{p = ($2 == "python")} p && /^Version: /{print $2; exit}' Packages | sed -E 's/^[0-9]+://' | grep -oE '^[0-9]+\.[0-9]+')"
+          echo "Python version of the Termux repository: $PYTHON_VERSION"
+
+          DEB_DIR_PATH="python-termuxgui"
+          DEB_PATH="$(python3 termuj/build-python-termuxgui-deb.py termuxgui "$PYTHON_VERSION" "$DEB_DIR_PATH")"
+          (cd "$DEB_DIR_PATH" && sha256sum *.deb > checksums-sha256.txt && cat checksums-sha256.txt)
+          echo "DEB_DIR_PATH=$DEB_DIR_PATH" >> "$GITHUB_ENV"
+          echo "DEB_NAME=$(basename "$DEB_PATH" .deb)" >> "$GITHUB_ENV"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DEB_NAME }}
+          path: |
+            ${{ env.DEB_DIR_PATH }}/*.deb
+            ${{ env.DEB_DIR_PATH }}/checksums-sha256.txt
+
+  attach-to-release:
+    if: github.event_name == 'release'
+    needs: [plugin, python-termuxgui]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Download plugin APKs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: termuj-*-app_*
+          path: artifacts
+
+      - name: Download python-termuxgui package
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-termuxgui_*
+          path: artifacts
+
+      - name: Attach plugin APKs and python-termuxgui package to release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_VERSION_NAME="${GITHUB_REF#refs/tags/}"
+          mkdir assets
+          for dir in artifacts/*/; do
+            artifact="$(basename "$dir")"
+            for file in "$dir"*.apk "$dir"*.deb; do
+              [ -f "$file" ] || continue
+              name="$(basename "$file")"
+              # Termux:GUI does not name its APK
+              [ "$name" = app-debug.apk ] && name="${artifact}+debug.apk"
+              [ -e "assets/$name" ] && { echo "Duplicate asset: $name"; exit 1; }
+              cp "$file" "assets/$name"
+            done
+          done
+
+          SHA256SUMS="termuj-plugins_${RELEASE_VERSION_NAME}_sha256sums"
+          (cd assets && sha256sum * > "../$SHA256SUMS" && mv "../$SHA256SUMS" . && cat "$SHA256SUMS")
+          gh release upload -R "$GITHUB_REPOSITORY" "$RELEASE_VERSION_NAME" assets/*

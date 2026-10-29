@@ -222,7 +222,7 @@ task dexTermujHexpatch(dependsOn: compileTermujHexpatch) {
 task buildTermujHexpatchDeb(dependsOn: dexTermujHexpatch) {
     def packageDir = new File(rootDir, "termuj/hexpatch")
     def script = new File(rootDir, "termuj/build-hexpatch-deb.py")
-    inputs.files(termujHexpatchJar, script, new File(packageDir, "control"))
+    inputs.files(termujHexpatchJar, script, new File(rootDir, "termuj/debpkg.py"), new File(packageDir, "control"))
     inputs.dir(new File(packageDir, "files"))
     outputs.dir(termujHexpatchDebDir)
     doLast {
