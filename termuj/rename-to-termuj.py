@@ -30,6 +30,7 @@ REPLACEMENTS = [
     (r'"Termux"', '"Termuj"'),
     (r">Termux<", ">Termuj<"),
     (r"termux-(api|boot|float|styling|tasker|widget)-app_", r"termuj-\1-app_"),
+    (r"termux-x11-universal-", "termuj-x11-universal-"),
 ]
 PATTERN = re.compile("(" + "|".join([URL] + KEEP) + ")|" + "|".join("(" + p + ")" for p, _ in REPLACEMENTS))
 SUBS = [(re.compile(p), r) for p, r in REPLACEMENTS]

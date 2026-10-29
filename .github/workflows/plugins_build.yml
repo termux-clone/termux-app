@@ -120,20 +120,21 @@ jobs:
             "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmake;3.10.2.4988404" > /dev/null
           fi
 
-          GRADLE_TASK="assembleDebug"
-          APK_DIR="app/build/outputs/apk/debug"
-          # Termux:X11: only the standalone APK, which is signed with the key of the termux-x11 repository
-          # like the official one, so that the (hexpatched) loader of the termux-x11-nightly package accepts it.
+          GRADLE_TASKS=(assembleDebug)
+          APK_DIRS=(app/build/outputs/apk/debug)
+          # Termux:X11: the standalone and sharedUid APKs, without the companion package of the termux-x11-nightly
+          # package, whose (hexpatched) loader accepts them as they are signed with the same key as the Termux app.
           if [ "${{ matrix.name }}" = x11 ]; then
-            GRADLE_TASK=":lorie-app:assembleStandaloneDebug"
-            APK_DIR="lorie-app/build/outputs/apk/standalone/debug"
+            GRADLE_TASKS=(:lorie-app:assembleStandaloneDebug :lorie-app:assembleSharedUidDebug)
+            APK_DIRS=(lorie-app/build/outputs/apk/standalone/debug lorie-app/build/outputs/apk/sharedUid/debug)
           fi
 
-          cd plugin
-          ./gradlew "$GRADLE_TASK"
+          (cd plugin && ./gradlew "${GRADLE_TASKS[@]}")
 
-          APK_DIR_PATH="plugin/$APK_DIR"
-          (cd "$APK_DIR" && ls *.apk && sha256sum *.apk > checksums-sha256.txt && cat checksums-sha256.txt)
+          APK_DIR_PATH="apks"
+          mkdir "$APK_DIR_PATH"
+          for dir in "${APK_DIRS[@]}"; do cp plugin/"$dir"/*.apk "$APK_DIR_PATH/"; done
+          (cd "$APK_DIR_PATH" && ls *.apk && sha256sum *.apk > checksums-sha256.txt && cat checksums-sha256.txt)
           echo "APK_DIR_PATH=$APK_DIR_PATH" >> "$GITHUB_ENV"
 
       - name: Upload APK
@@ -209,8 +210,8 @@ jobs:
             for file in "$dir"*.apk "$dir"*.deb; do
               [ -f "$file" ] || continue
               name="$(basename "$file")"
-              # Termux:GUI and Termux:X11 do not name their APKs like the other plugins
-              [ "${name##*.}" = apk ] && [ "${name#termuj-}" = "$name" ] && name="${artifact}+debug.apk"
+              # Termux:GUI does not name its APK
+              [ "$name" = app-debug.apk ] && name="${artifact}+debug.apk"
               [ -e "assets/$name" ] && { echo "Duplicate asset: $name"; exit 1; }
               cp "$file" "assets/$name"
             done
