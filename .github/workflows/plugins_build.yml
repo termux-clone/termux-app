@@ -23,8 +23,9 @@ on:
   workflow_dispatch:
 
 env:
-  # Latest official release tags of the Termux plugin apps, as "<name>:<tag>" of github.com/termux/termux-<name>
-  PLUGINS: "api:v0.53.0 boot:v0.8.1 float:v0.17.0 gui:0.1.6 styling:v0.32.1 tasker:v0.9.0 widget:v0.15.0"
+  # Latest official release tags of the Termux plugin apps, as "<name>:<tag or commit>" of github.com/termux/termux-<name>.
+  # Termux:X11 only has a moving "nightly" tag, so the commit it pointed to is used.
+  PLUGINS: "api:v0.53.0 boot:v0.8.1 float:v0.17.0 gui:0.1.6 styling:v0.32.1 tasker:v0.9.0 widget:v0.15.0 x11:6dfb8b4a4cc887bc329284d31eb049d596bd1208"
   # Latest tag of github.com/tareksander/termux-gui-python-bindings, the termuxgui Python module for Termux:GUI
   PYTHON_TERMUXGUI_TAG: "0.1.6"
 
@@ -49,7 +50,9 @@ jobs:
           matrix=""
           for plugin in $PLUGINS; do
             name="${plugin%%:*}" tag="${plugin#*:}"
-            git clone -q --depth 1 -b "$tag" "https://github.com/termux/termux-$name.git" "plugin-$name"
+            git init -q "plugin-$name"
+            git -C "plugin-$name" fetch -q --depth 1 "https://github.com/termux/termux-$name.git" "$tag"
+            git -C "plugin-$name" checkout -q FETCH_HEAD
             commit="$(grep -oE "com\.termux\.termux-app:[a-z-]+:[0-9a-f]+" "plugin-$name/app/build.gradle" | head -n 1 | sed 's/.*://')" || true
             echo "termux-$name $tag: termux-app libraries ${commit:-not used}"
             [ -n "$commit" ] && commits+="$commit"$'\n'
@@ -105,7 +108,10 @@ jobs:
           mkdir -p ~/.m2/repository/com
           [ -d libraries/termuj ] && cp -r libraries/termuj ~/.m2/repository/com/
 
-          git clone -q --depth 1 -b "${{ matrix.tag }}" "https://github.com/termux/termux-${{ matrix.name }}.git" plugin
+          git init -q plugin
+          git -C plugin fetch -q --depth 1 "https://github.com/termux/termux-${{ matrix.name }}.git" "${{ matrix.tag }}"
+          git -C plugin checkout -q FETCH_HEAD
+          [ -f plugin/.gitmodules ] && git -C plugin submodule update -q --init --recursive --jobs 8 --depth 1
           python3 termuj/rename-to-termuj.py plugin
           sed -i -E 's|^(\s*)//\s*mavenLocal\(\)|\1mavenLocal()|' plugin/build.gradle
 
@@ -114,11 +120,20 @@ jobs:
             "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmake;3.10.2.4988404" > /dev/null
           fi
 
-          cd plugin
-          ./gradlew assembleDebug
+          GRADLE_TASK="assembleDebug"
+          APK_DIR="app/build/outputs/apk/debug"
+          # Termux:X11: only the standalone APK, which is signed with the key of the termux-x11 repository
+          # like the official one, so that the (hexpatched) loader of the termux-x11-nightly package accepts it.
+          if [ "${{ matrix.name }}" = x11 ]; then
+            GRADLE_TASK=":lorie-app:assembleStandaloneDebug"
+            APK_DIR="lorie-app/build/outputs/apk/standalone/debug"
+          fi
 
-          APK_DIR_PATH="plugin/app/build/outputs/apk/debug"
-          (cd app/build/outputs/apk/debug && ls *.apk && sha256sum *.apk > checksums-sha256.txt && cat checksums-sha256.txt)
+          cd plugin
+          ./gradlew "$GRADLE_TASK"
+
+          APK_DIR_PATH="plugin/$APK_DIR"
+          (cd "$APK_DIR" && ls *.apk && sha256sum *.apk > checksums-sha256.txt && cat checksums-sha256.txt)
           echo "APK_DIR_PATH=$APK_DIR_PATH" >> "$GITHUB_ENV"
 
       - name: Upload APK
@@ -194,8 +209,8 @@ jobs:
             for file in "$dir"*.apk "$dir"*.deb; do
               [ -f "$file" ] || continue
               name="$(basename "$file")"
-              # Termux:GUI does not name its APK
-              [ "$name" = app-debug.apk ] && name="${artifact}+debug.apk"
+              # Termux:GUI and Termux:X11 do not name their APKs like the other plugins
+              [ "${name##*.}" = apk ] && [ "${name#termuj-}" = "$name" ] && name="${artifact}+debug.apk"
               [ -e "assets/$name" ] && { echo "Duplicate asset: $name"; exit 1; }
               cp "$file" "assets/$name"
             done

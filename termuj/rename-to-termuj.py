@@ -26,7 +26,7 @@ REPLACEMENTS = [
     (r"com\.termux", "com.termuj"),
     (r"com_termux", "com_termuj"),
     (r"com/termux", "com/termuj"),
-    (r"Termux:(API|Boot|Float|GUI|Styling|Tasker|Widget)\b", r"Termuj:\1"),
+    (r"Termux:(API|Boot|Float|GUI|Styling|Tasker|Widget|X11)\b", r"Termuj:\1"),
     (r'"Termux"', '"Termuj"'),
     (r">Termux<", ">Termuj<"),
     (r"termux-(api|boot|float|styling|tasker|widget)-app_", r"termuj-\1-app_"),
