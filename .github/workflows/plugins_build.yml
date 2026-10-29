@@ -100,6 +100,11 @@ jobs:
           python3 termuj/rename-to-termuj.py plugin
           sed -i -E 's|^(\s*)//\s*mavenLocal\(\)|\1mavenLocal()|' plugin/build.gradle
 
+          # Termux:GUI requests CMake 3.10.2, which is neither on the runner nor installed by Gradle.
+          if [ "${{ matrix.name }}" = gui ]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmake;3.10.2.4988404" > /dev/null
+          fi
+
           cd plugin
           ./gradlew assembleDebug
 
